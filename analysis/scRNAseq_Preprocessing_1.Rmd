@@ -32,7 +32,7 @@ library(Seurat)
 
 ```{r}
 # Load the PBMC dataset
-pbmc.data <- Read10X(data.dir = "/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/data/filtered_feature_bc_matrix")
+pbmc.data <- Read10X(data.dir = "/Users/hawacoulibaly/Documents/filtered_feature_bc_matrix")
 # Initialize the Seurat object with the raw (non-normalized data).
 pbmc <- CreateSeuratObject(counts = pbmc.data, project = "pbmc3k")
 pbmc
