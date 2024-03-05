@@ -1,0 +1,97 @@
+---
+title: "Part 2 - Cluster Annotation and Analysis"
+output: html_document
+---
+
+# Annotating the cell types using Human Protein Atlas
+
+
+### load necessary libraies
+
+```{r}
+library(Seurat)
+library(tidyverse)
+library(SingleR)
+library(dplyr)
+library(celldex)
+library(RColorBrewer)
+library(SingleCellExperiment)
+```
+
+### read in the 3k pbmc data 
+
+```{r}
+# this returns a seurat object
+pbmc<- readRDS("/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/data/pbmc_3k.RDS")
+pbmc
+```
+
+### ### plot the UMAP and TSNE side by side tVisualize clusters
+```{r}
+p1<- DimPlot(pbmc, reduction = "umap", label = TRUE, pt.size = 2 ,label.size = 8)
+p2<- DimPlot(pbmc, reduction = "tsne", label = TRUE, pt.size = 2 ,label.size = 8)
+p1+p2
+```
+### load the HPCA refrence dataset
+
+```{r}
+### load HPCA immune reference
+hpca.ref <- celldex::HumanPrimaryCellAtlasData()
+```
+```{r}
+# Let’s convert our Seurat object to single cell experiment (SCE) for convenience. After this, using SingleR becomes very easy:
+sce <- as.SingleCellExperiment(DietSeurat(pbmc))
+sce
+```
+Now, we can use the Human Protein Cell Atlas (HPCA) dataset for the 3k pmbc cells to annotate clusters.
+
+```{r}
+### Assign cell identity to clusters
+hpca.main <- SingleR(test = sce,assay.type.test = 1,ref = hpca.ref,labels = hpca.ref$label.main, clusters=pbmc@meta.data$seurat_clusters)
+hpca.fine <- SingleR(test = sce,assay.type.test = 1,ref = hpca.ref,labels = hpca.ref$label.fine, clusters=pbmc@meta.data$seurat_clusters)
+print('DONE')
+
+```
+
+### View main assignment
+```{r}
+table(hpca.main$pruned.labels)
+```
+
+### View fine assignment
+
+```{r}
+table(hpca.fine$pruned.labels)
+``` 
+
+### View fine assignment
+
+```{r}
+table(hpca.fine$labels)
+
+```
+
+
+### save metadata
+```{r}
+# write.csv(hpca.main,"/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/output/hpca_cluster_annotation_main.csv" )
+# write.csv(hpca.fine,"/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/output/hpca_cluster_annotation_fine.csv" )
+print('DONE')
+
+```
+
+Finally, let’s visualize the cluster-wise fine-grained annotations.
+
+```{r}
+pbmc.main <- RenameIdents(pbmc, `0` = "B cell", `1` = "B cell", `2` = "B cell", `3` = "B cell", `4` = "B cell", `5` = "B cell")
+pbmc.fine <-  RenameIdents(pbmc, `0` = "0 : Immature B cell", `1` = "1 : Immature B cell", `2` = "2 : Immature B cell", `3` = "3 : Memory B cell", `4` = "4 : Memory B cell", `5` = "5 : Memory B cell")
+pbmc.final <-  RenameIdents(pbmc, `0` = "Immature B cell", `1` = "Immature B cell", `2` = "Immature B cell", `3` = "Memory B cell", `4` = "Memory B cell", `5` = "Memory B cell")
+
+
+# p1 <- DimPlot(pbmc.main, label = T , reduction = 'umap', repel = T, label.size = 3) + NoLegend()
+p2 <- DimPlot(pbmc.fine, label = T , reduction = 'umap', repel = T, label.size = 3) + NoLegend()
+p3 <- DimPlot(pbmc.final, label = T , reduction = 'umap', repel = T, label.size = 3)
+
+p2+p3
+```
+

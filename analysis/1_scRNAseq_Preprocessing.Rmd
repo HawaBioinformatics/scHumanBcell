@@ -1,5 +1,5 @@
 ---
-title: "Part 1"
+title: "Part 1 - QUALITY CONTROL AND PRE-PROCESSING"
 output: html_document
 ---
 
@@ -242,9 +242,6 @@ As in PhenoGraph, we first construct a KNN graph based on the euclidean distance
 To cluster the cells, we next apply modularity optimization techniques such as the Louvain algorithm (default) or SLM [SLM, Blondel et al., Journal of Statistical Mechanics], to iteratively group cells together, with the goal of optimizing the standard modularity function. The `FindClusters` function implements this procedure, and contains a resolution parameter that sets the ‘granularity’ of the downstream clustering, with increased values leading to a greater number of clusters. We find that setting this parameter between **0.4-1.2** typically returns good results for single-cell datasets of around 3K cells. Optimal resolution often increases for larger datasets
 
 ```{r}
-# Re-run PCA using Bcell markers for downstream cluster analysis
-pbmc <- RunPCA(pbmc, features = c("CD5" , "CD69" , "TAGLN2", "ITGAX"  , "CD19" , "FCRL5" , "TBET","CD27" , "CD38", "CD72" , "FCRL5" , "ITGAX" , "LILRB2", "CD11C" ,"CD19" ,  "FCRL5" , "TBET","CD19" , "IGD" , "MTG", "CD38" , "MKI67" , "MZB1", "MS4A1" , "NEIL1" , "CD10" , "CD74" , "CD79A" , "CD83" , "HLA-DPB1" , "HLA-DRA" , "HLA-DRB1","CD19"  , "CD27" , "IGD" , "IGM", "CD37" , "CD74" , "CD79A" , "HLA-DRA" , "IGHM" , "LYN", "AIM2" , "CD19" , "CD20" , "CD21" , "CD27" , "CD79A" , "IGD" , "JCHAIN" , "MS4A1","BCL7A" , "CD11C" , "CD19"  , "CD27" , "CD38" , "CD79A" , "FCER2" , "FCRL5" , "IGD" , "IGHD" , "IGHM" , "IGM" , "IL4R" , "MS4A1" , "PAX5" , "TCL1A", "CD19" , "CD27", "CD19" , "CD27" , "IGD" , "IGM"), verbose = FALSE)
-
 pbmc <- FindNeighbors(pbmc, dims = 1:10)
 pbmc <- FindClusters(pbmc, resolution = 0.5)
 # Look at cluster IDs
@@ -260,11 +257,18 @@ t-SNE explained by StatQuest https://www.youtube.com/watch?v=NEaUSP4YerM
 ```{r}
 pbmc <- RunUMAP(pbmc, dims = 1:10)
 pbmc<- RunTSNE(pbmc, dims = 1:10)
+```
 
-DimPlot(pbmc, reduction = "umap", label = TRUE)
+
+```{r}
+## now let's visualize in the UMAP space
+
+p1 <- DimPlot(pbmc, reduction = "umap", label = TRUE, label.size = 6)
 
 ## now let's visualize in the TSNE space
-DimPlot(pbmc, reduction = "tsne")
+p2 <- DimPlot(pbmc, reduction = "tsne", label = TRUE, label.size = 6)
+
+p1+p2
 ```
 
 ### Finding differentially expressed features (cluster biomarkers)
@@ -284,7 +288,7 @@ pbmc.markers %>% group_by(cluster) %>% top_n(n = 2, wt = avg_log2FC)
 VlnPlot (shows expression probability distributions across clusters), and FeaturePlot (visualizes feature expression on a tSNE or PCA plot) are our most commonly used visualizations. We also suggest exploring RidgePlot, CellScatter, and DotPlot as additional methods to view your dataset.
 
 ```{r}
-VlnPlot(pbmc, features = c("CD27", "CD19"))
+VlnPlot(pbmc, features = c("MS4A1", "CD19"))
 
 ## understanding the matrix of data slots
 pbmc[["RNA"]]$data[c("MS4A1", "CD19"), 1:30]
@@ -294,8 +298,8 @@ pbmc[["RNA"]]$counts[c("MS4A1", "CD19"), 1:30]
 
 ```{r}
 # you can plot raw counts as well
-VlnPlot(pbmc, features = c("CD27", "CD19"), slot = "counts", log = TRUE)
-VlnPlot(pbmc, features = c("CD27", "CD19"), slot = "scale.data")
+VlnPlot(pbmc, features = c("MS4A1", "CD19"), slot = "counts", log = TRUE)
+VlnPlot(pbmc, features = c("MS4A1", "CD19"), slot = "scale.data")
 ```
 
 FeaturePlot.
@@ -313,6 +317,11 @@ There is a package to deal with this type of overplotting problem. https://githu
 
 ```{r}
 top10 <- pbmc.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+pbmc.markers %>%
+    group_by(cluster) %>%
+    dplyr::filter(avg_log2FC > 1.5) %>%
+    slice_head(n = 10) %>%
+    ungroup() -> top10
 DoHeatmap(pbmc, features = top10$gene) + NoLegend()
 ```
 
