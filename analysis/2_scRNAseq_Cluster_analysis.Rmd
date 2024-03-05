@@ -5,7 +5,6 @@ output: html_document
 
 # Annotating the cell types using Human Protein Atlas
 
-
 ### load necessary libraies
 
 ```{r}
@@ -18,7 +17,7 @@ library(RColorBrewer)
 library(SingleCellExperiment)
 ```
 
-### read in the 3k pbmc data 
+### read in the 3k pbmc data
 
 ```{r}
 # this returns a seurat object
@@ -26,23 +25,27 @@ pbmc<- readRDS("/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/data/pbmc_
 pbmc
 ```
 
-### ### plot the UMAP and TSNE side by side tVisualize clusters
+### \### plot the UMAP and TSNE side by side tVisualize clusters
+
 ```{r}
 p1<- DimPlot(pbmc, reduction = "umap", label = TRUE, pt.size = 2 ,label.size = 8)
 p2<- DimPlot(pbmc, reduction = "tsne", label = TRUE, pt.size = 2 ,label.size = 8)
 p1+p2
 ```
+
 ### load the HPCA refrence dataset
 
 ```{r}
 ### load HPCA immune reference
 hpca.ref <- celldex::HumanPrimaryCellAtlasData()
 ```
+
 ```{r}
 # Let’s convert our Seurat object to single cell experiment (SCE) for convenience. After this, using SingleR becomes very easy:
 sce <- as.SingleCellExperiment(DietSeurat(pbmc))
 sce
 ```
+
 Now, we can use the Human Protein Cell Atlas (HPCA) dataset for the 3k pmbc cells to annotate clusters.
 
 ```{r}
@@ -54,6 +57,7 @@ print('DONE')
 ```
 
 ### View main assignment
+
 ```{r}
 table(hpca.main$pruned.labels)
 ```
@@ -62,7 +66,7 @@ table(hpca.main$pruned.labels)
 
 ```{r}
 table(hpca.fine$pruned.labels)
-``` 
+```
 
 ### View fine assignment
 
@@ -71,8 +75,8 @@ table(hpca.fine$labels)
 
 ```
 
-
 ### save metadata
+
 ```{r}
 # write.csv(hpca.main,"/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/output/hpca_cluster_annotation_main.csv" )
 # write.csv(hpca.fine,"/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/output/hpca_cluster_annotation_fine.csv" )
@@ -94,4 +98,18 @@ p3 <- DimPlot(pbmc.final, label = T , reduction = 'umap', repel = T, label.size 
 
 p2+p3
 ```
+
+Let's validate using Immature and Memory B cell markers
+
+```{r}
+### Immature B cell markers
+features = c( 'CD74', 'CD79A', 'CD83', 'HLA-DPB1', 'HLA-DRA', 'HLA-DRB1')
+DotPlot(pbmc, features = features) + RotatedAxis()
+```
+```{r}
+### Memory B cell markers
+features = c('MS4A1','PTPRC','CD45RO')
+DotPlot(pbmc, features = features) + RotatedAxis()
+```
+
 

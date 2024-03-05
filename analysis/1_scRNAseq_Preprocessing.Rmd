@@ -1,5 +1,5 @@
 ---
-title: "Part 1 - QUALITY CONTROL AND PRE-PROCESSING"
+title: "Part 1 - Quality Control & Pre-Processing"
 output: html_document
 ---
 
@@ -160,14 +160,6 @@ pbmc[["RNA"]]$scale.data[1:6, 1:6]
 
 Principle component analysis (PCA) is a linear dimension reduction technology.
 
-Highly recommend this 5 min video on PCA by StatQuest https://www.youtube.com/watch?v=HMOI_lkzW08
-and two longer versions by the same person:
-
-https://www.youtube.com/watch?v=_UVHneBUBW0  
-https://www.youtube.com/watch?v=FgakZw6K1QQ&t=674s
-
-some blog posts I wrote on PCA: 
-
 * [PCA in action](https://divingintogeneticsandgenomics.rbind.io/post/pca-in-action/)
 * [permutation test for PCA components](https://divingintogeneticsandgenomics.rbind.io/post/permute-test-for-pca-components/)
 
@@ -281,6 +273,11 @@ Finding all marker genes takes long in this step. let's watch the PCA video whil
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 pbmc.markers <- FindAllMarkers(pbmc, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 pbmc.markers %>% group_by(cluster) %>% top_n(n = 2, wt = avg_log2FC)
+```
+### Save marker genes for each cluster
+
+```{r}
+# write_csv(pbmc.markers, "/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/output/cluster_markers.csv")
 ```
 
 ### Visualize marker genes

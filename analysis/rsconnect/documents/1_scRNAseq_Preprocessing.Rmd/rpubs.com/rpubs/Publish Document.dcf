@@ -4,7 +4,8 @@ username:
 account: rpubs
 server: rpubs.com
 hostUrl: rpubs.com
-appId: https://api.rpubs.com/api/v1/document/1157359/5580c5b0dc0c40479a4b6493564b1e49
-bundleId: https://api.rpubs.com/api/v1/document/1157359/5580c5b0dc0c40479a4b6493564b1e49
-url: http://rpubs.com/publish/claim/1157359/a738fed6b2d74ec5b06ee62844737a1b
-version: 1
+appId: https://api.rpubs.com/api/v1/document/1157658/dffffdbf955842638f9f1e6d150b07af
+bundleId: https://api.rpubs.com/api/v1/document/1157658/dffffdbf955842638f9f1e6d150b07af
+url: http://rpubs.com/HawaBioinformatics/1157658
+when: 1709653282.53312
+lastSyncTime: 1709653282.53313
