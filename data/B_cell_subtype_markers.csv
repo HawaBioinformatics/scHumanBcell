@@ -1,0 +1,18 @@
+﻿Activated_B_cells,Age_Associated_B_cells,Aged_Memory_B_cell,Antibody_secreting_B_cell ,Atypical_B_cell,Atypical_Memory_B_cell,Circulating_Activated_B_cell,Dividing_Plasma_B_cell,Germinal_Center_B_cell,Immature_B_cell,Marginal_Zone_B_cell,Mature_B_cell,Memory_B_cell,Naïve_B_cell,Switched_Memory_B_cell,Unswitched_Memory_B_cell
+CD5,ITGAX,CD11C,CD27,CD72,CD11C,CD19,CD38,MS4A1,CD10,CD19,CD37,AIM2,BCL7A,CD19,CD19
+CD69,,CD19,CD38,FCRL5,CD19,IGD,MKI67,NEIL1,CD74,CD20,CD74,CD19,CD11C,CD27,CD20
+TAGLN2,,FCRL5,,ITGAX,CD20,MTG,MZB1,,CD79A,CD27,CD79A,CD20,CD19,,CD27
+,,TBET,,LILRB2,FCRL5,,,,CD83,IGD,HLA-DRA,CD21,CD20,,IGD
+,,,,,TBET,,,,HLA-DPB1,IGM,IGHM,CD27,CD27,,IGM
+,,,,,,,,,HLA-DRA,,LYN,CD79A,CD38,,
+,,,,,,,,,HLA-DRB1,,,IGD,CD79A,,
+,,,,,,,,,,,,JCHAIN,FCER2,,
+,,,,,,,,,,,,MS4A1,FCRL5,,
+,,,,,,,,,,,,,IGD,,
+,,,,,,,,,,,,,IGHD,,
+,,,,,,,,,,,,,IGHM,,
+,,,,,,,,,,,,,IGM,,
+,,,,,,,,,,,,,IL4R,,
+,,,,,,,,,,,,,MS4A1,,
+,,,,,,,,,,,,,PAX5,,
+,,,,,,,,,,,,,TCL1A,,

@@ -1,5 +1,5 @@
 ---
-title: "Part 2 - Cluster Annotation"
+title: "Part 3 - B cell subtyping"
 output: html_document
 ---
 
@@ -20,10 +20,18 @@ library(SingleCellExperiment)
 ### read in the 3k pbmc data
 
 ```{r}
-# this returns the seurat pre_processed object
-pbmc<- readRDS("/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/data/pbmc_3k_pre_process.RDS")
+# this returns the seurat clustered object
+pbmc<- readRDS("/Users/hawacoulibaly/Documents/pbmc_3k_annotated.RDS")
 pbmc
 ```
+### assign B cell subtypes gene signatures
+
+These genes were retrieved from the CellMarker 2.0 database
+
+```{r}
+
+```
+
 
 ```{r}
 # find number of cells for SCTransform
