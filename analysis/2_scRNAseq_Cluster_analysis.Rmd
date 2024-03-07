@@ -1,11 +1,11 @@
 ---
-title: "Part 2 - Cluster Annotation and Analysis"
+title: "Part 2 - Cluster Annotation"
 output: html_document
 ---
 
 # Annotating the cell types using Human Protein Atlas
 
-### load necessary libraies
+### load necessary libraries
 
 ```{r}
 library(Seurat)
@@ -20,20 +20,72 @@ library(SingleCellExperiment)
 ### read in the 3k pbmc data
 
 ```{r}
-# this returns a seurat object
-pbmc<- readRDS("/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/data/pbmc_3k.RDS")
+# this returns the seurat pre_processed object
+pbmc<- readRDS("/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/data/pbmc_3k_pre_process.RDS")
 pbmc
 ```
 
-### \### plot the UMAP and TSNE side by side tVisualize clusters
+```{r}
+# find number of cells for SCTransform
+ncol(pbmc)
+```
 
 ```{r}
-p1<- DimPlot(pbmc, reduction = "umap", label = TRUE, pt.size = 2 ,label.size = 8)
-p2<- DimPlot(pbmc, reduction = "tsne", label = TRUE, pt.size = 2 ,label.size = 8)
+pbmc <- NormalizeData(pbmc)
+pbmc <- FindVariableFeatures(pbmc, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(pbmc)
+pbmc <- ScaleData(pbmc, features = all.genes)
+```
+
+SCTransform command replaces NormalizeData, ScaleData, and FindVariableFeatures. We will also correct for % MT genes and cell cycle scores using vars.to.regress variables percent MT, S AND G2M Scores
+
+# First, let’s calculate cell cycle scores
+
+```{r}
+cc.genes.updated.2019
+```
+
+```{r}
+s.genes <- cc.genes.updated.2019$s.genes
+g2m.genes <- cc.genes.updated.2019$g2m.genes
+
+pbmc <- CellCycleScoring(pbmc, s.features = s.genes, g2m.features = g2m.genes)
+table(pbmc[[]]$Phase)
+```
+
+# Now, let's apply SCTransform
+
+```{r}
+pbmc <- SCTransform(pbmc, method = "glmGamPoi", ncells = 2456, variable.features.n = 2000 , vars.to.regress = c("percent.mt","S.Score","G2M.Score"), verbose = F)
+pbmc
+```
+
+# After this let’s do standard PCA, UMAP, and clustering. the exact number can be adjusted depending on your dataset.
+
+```{r}
+# B-cell markers
+features <- c('Leu-12' , 'CD27' , 'IGM' , 'CD19' , 'ZAP70' , 'IGD' , 'CD38' , 'CD45' , 'CD24' , 'CD21' , 'CD20' , 'CD5' , 'CD74' , 'MS4A1' , 'CD79A' , 'CD79B' , 'BLNK' , 'CD37' , 'CD11C' , 'CD95' , 'T-bet' , 'MZB1' , 'LILRA4' , 'IGJ' , 'CD79' , 'CD22' , 'HLA-A' , 'IGHG2' , 'CALR' , 'TNFRSF17' , 'JCHAIN' , 'XBP1' , 'BACH2' , 'CD127' , 'CD25' , 'CD1C' , 'CR2' , 'CD81' , 'CD40' , 'CD72' , 'FCGR2A' , 'IGHM' , 'PAX5' , 'SPIB' , 'ITGB1' , 'FCRLA' , 'IGHA1' , 'IGHD' , 'FCER2' , 'TCL1A' , 'BCL11A' , 'PLPP5' , 'FCRL1' , 'TNFRSF13C' , 'YBX3' , 'AHNAK' , 'HLA-DPB1' , 'NFKBIA' , 'SWAP70' , 'AIM2' , 'IL4R' , 'IGKC')
+
+pbmc <- RunPCA(pbmc, features = features, verbose = F)
+pbmc <- RunUMAP(pbmc, dims = 1:10, verbose = F)
+pbmc <- RunTSNE(pbmc, dims = 1:10, verbose = F)
+
+pbmc <- FindNeighbors(pbmc, features = features, verbose = F)
+pbmc <- FindClusters(pbmc, verbose = F, resolution = 0.5)
+
+table(pbmc[[]]$seurat_clusters)
+
+```
+
+### \### plot the UMAP and TSNE side by side to visualize clusters
+
+```{r}
+p1<- UMAPPlot(pbmc, reduction = "umap", label = TRUE, pt.size = 2 ,label.size = 6)
+p2<- TSNEPlot(pbmc, reduction = "tsne", label = TRUE, pt.size = 2 ,label.size = 6)
 p1+p2
 ```
 
-### load the HPCA refrence dataset
+### load the HPCA reference dataset
 
 ```{r}
 ### load HPCA immune reference
@@ -49,67 +101,108 @@ sce
 Now, we can use the Human Protein Cell Atlas (HPCA) dataset for the 3k pmbc cells to annotate clusters.
 
 ```{r}
-### Assign cell identity to clusters
-hpca.main <- SingleR(test = sce,assay.type.test = 1,ref = hpca.ref,labels = hpca.ref$label.main, clusters=pbmc@meta.data$seurat_clusters)
+### Assign identity to clusters
 hpca.fine <- SingleR(test = sce,assay.type.test = 1,ref = hpca.ref,labels = hpca.ref$label.fine, clusters=pbmc@meta.data$seurat_clusters)
+hpca.ont <- SingleR(test = sce,assay.type.test = 1,ref = hpca.ref,labels = hpca.ref$label.ont, clusters=pbmc@meta.data$seurat_clusters)
 print('DONE')
 
-```
-
-### View main assignment
-
-```{r}
-table(hpca.main$pruned.labels)
-```
-
-### View fine assignment
-
-```{r}
-table(hpca.fine$pruned.labels)
 ```
 
 ### View fine assignment
 
 ```{r}
 table(hpca.fine$labels)
-
 ```
+
+CLUSTER LABELS
+
+0 B_cell:immature 1 B_cell:immature 2 B_cell:Memory 3 B_cell:immature 4 B_cell:Memory 5 B_cell:immature 6 B_cell:immature
+
+### View ontology assignment
+
+```{r}
+table(hpca.ont$pruned.labels)
+```
+
+CL:0000787 - memory B cell CL:0000816 - immature B cell
+
+CLUSTER LABELS
+
+0 memory B cell 1 immature B cell 2 memory B cell 3 memory B cell 4 memory B cell 5 memory B cell 6 memory B cell
 
 ### save metadata
 
 ```{r}
-# write.csv(hpca.main,"/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/output/hpca_cluster_annotation_main.csv" )
-# write.csv(hpca.fine,"/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/output/hpca_cluster_annotation_fine.csv" )
-print('DONE')
+#write.csv(hpca.fine,"hpca_Bcell_cluster_annotation_fine.csv" )
+#write.csv(hpca.ont,"hpca_B_cell_cluster_annotation_ont.csv" )
 
+print('DONE')
 ```
 
 Finally, let’s visualize the cluster-wise fine-grained annotations.
 
 ```{r}
-pbmc.main <- RenameIdents(pbmc, `0` = "B cell", `1` = "B cell", `2` = "B cell", `3` = "B cell", `4` = "B cell", `5` = "B cell")
-pbmc.fine <-  RenameIdents(pbmc, `0` = "0 : Immature B cell", `1` = "1 : Immature B cell", `2` = "2 : Immature B cell", `3` = "3 : Memory B cell", `4` = "4 : Memory B cell", `5` = "5 : Memory B cell")
-pbmc.final <-  RenameIdents(pbmc, `0` = "Immature B cell", `1` = "Immature B cell", `2` = "Immature B cell", `3` = "Memory B cell", `4` = "Memory B cell", `5` = "Memory B cell")
-
-
-# p1 <- DimPlot(pbmc.main, label = T , reduction = 'umap', repel = T, label.size = 3) + NoLegend()
-p2 <- DimPlot(pbmc.fine, label = T , reduction = 'umap', repel = T, label.size = 3) + NoLegend()
-p3 <- DimPlot(pbmc.final, label = T , reduction = 'umap', repel = T, label.size = 3)
-
-p2+p3
+pbmc.ont <-  RenameIdents(pbmc, `0` = "0 : Memory B cell", `1` = "1 : Immature B cell", `2` = "2 : Memory B cell", `3` = "3 : Memory B cell", `4` = "4 : Memory B cell", `5` = "5 : Memory B cell", `6` = "6 : Memory B cell")
+pbmc.final <-  RenameIdents(pbmc, `0` = "Memory B cell", `1` = "Immature B cell", `2` = "Memory B cell", `3` = "Memory B cell", `4` = "Memory B cell", `5` = "Memory B cell", `6` = "Memory B cell")
 ```
-
-Let's validate using Immature and Memory B cell markers
 
 ```{r}
-### Immature B cell markers
-features = c( 'CD74', 'CD79A', 'CD83', 'HLA-DPB1', 'HLA-DRA', 'HLA-DRB1')
-DotPlot(pbmc, features = features) + RotatedAxis()
-```
-```{r}
-### Memory B cell markers
-features = c('MS4A1','PTPRC','CD45RO')
-DotPlot(pbmc, features = features) + RotatedAxis()
+UMAPPlot(pbmc.ont , reduction = 'umap' ,label = TRUE, pt.size = 2 ,label.size = 4)
 ```
 
+visualize the B cell subtypes
+
+```{r}
+p1 <- UMAPPlot(pbmc.final, reduction = 'umap',  label = TRUE, pt.size = 2 ,label.size = 4)
+p2 <- TSNEPlot(pbmc.final, reduction = "tsne", label = TRUE, pt.size = 2 ,label.size = 4)
+
+p1+p2
+```
+
+```{r}
+DimPlot(object = pbmc.final, reduction = 'umap' , split.by = 'ident')
+```
+
+```{r}
+DimPlot(object = pbmc.final, reduction = 'tsne' , split.by = 'ident')
+```
+
+Our analysis leads us to the conclusion that the dataset is mostly constituted of MEMORY B CELLS
+
+For further validation, let's explore using canonical Memory B cell markers <https://www.rndsystems.com/research-area/b-cell-markers>
+
+B220/CD45R ,C1qR1/CD93, CD19, CD21, CD27/TNFRSF7, CD40/TNFRSF5, CD20, MHC class II (I-A/I-E), TACI/TNFRSF13B AIM2, CD20 , CD27, CD79A, IGD, JCHAIN, MS4A1
+
+```{r}
+features <- c('CD19', 'CD27', 'CD40' , 'CD79A' ,'MS4A1' )
+
+DotPlot(pbmc.final, features = features, cols=c("#5F4B8BFF", "#ED2B33FF"), assay = "RNA", col.min = 0.3, col.max = 0.8, dot.min=0.12, dot.scale = 8, cluster.idents=F) + RotatedAxis()
+```
+
+feature plot of Memory B cell markers
+
+```{r}
+FeaturePlot(object = pbmc.final, features = "MS4A1", pt.size = 2,  split.by = 'ident', keep.scale = 'feature')
+```
+
+Immature B cell markers retrieved from the CellMarker 2.0 databasee <https://doi.org/10.1093/nar/gkac947> <http://117.50.127.228/CellMarker/CellMarkerBrowse.jsp>
+
+Species Tissue Class Tissue Type Cancer Cell name Cell marker Source Supports Detail Human Blood Peripheral blood Normal cell Immature B cell CD10 Experiment 1 DETAIL Human Blood Peripheral blood Normal cell Immature B cell CD74 Experiment 1 DETAIL Human Blood Peripheral blood Normal cell Immature B cell CD79A Experiment 1 DETAIL Human Blood Peripheral blood Normal cell Immature B cell CD83 Experiment 1 DETAIL Human Blood Peripheral blood Normal cell Immature B cell HLA-DPB1 Experiment 1 DETAIL Human Blood Peripheral blood Normal cell Immature B cell HLA-DRA Experiment 1 DETAIL Human Blood Peripheral blood Normal cell Immature B cell HLA-DRB1 Experiment 1 DETAIL
+
+```{r}
+features <- c('CD74' , 'CD79A' , 'CD83' , 'HLA-DPB1' , 'HLA-DRA' , 'HLA-DRB1')
+
+DotPlot(pbmc.final, features = features, cols=c("#5F4B8BFF", "#ED2B33FF"), assay = "RNA", col.min = 0.3, col.max = 0.8, dot.min=0.12, dot.scale = 8,
+        cluster.idents=F) + RotatedAxis()
+```
+
+feature plot of Immature B cell markers
+
+```{r}
+FeaturePlot(object = pbmc.final, features = "CD74", pt.size = 2,  split.by = 'ident', keep.scale = 'feature')
+```
+### save object
+```{r}
+# saveRDS(pbmc.final, "/Users/hawacoulibaly/Documents/GitHub/scHumanBcellFlu/data/pbmc_3k_annotated.RDS")
+```
 
