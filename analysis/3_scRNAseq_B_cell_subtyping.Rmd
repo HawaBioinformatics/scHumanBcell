@@ -17,6 +17,53 @@ library(RColorBrewer)
 library(UCell)
 ```
 
+
+read in the 10k pbmc data
+
+```{r}
+pbmc.26k <- readRDS("/Users/hawacoulibaly/Downloads/SEURAT_OBJECTS/HumanTonsil_BCells_scRNA_SeuratObject.rds")
+pbmc.26k <- UpdateSeuratObject(pbmc.26k)
+pbmc.26k
+```
+
+```{r}
+ncol(pbmc.26k)
+```
+
+```{r}
+pbmc.26k@meta.data %>% head()
+```
+```{r}
+## how many cells for each cell type? 12 B  cell sub-types
+table(pbmc.26k@meta.data$CellType)
+```
+```{r}
+# 10k cells
+length(colnames(pbmc.26k))
+```
+
+```{r}
+p1<- DimPlot(pbmc.26k, group.by = "CellType", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("26k pbmc")
+```
+
+plot the UMAP for two data sets side by side
+
+```{r}
+# read in our data
+pbmc<- readRDS("/Users/hawacoulibaly/Documents/pbmc_3k_annotated.RDS")
+
+p2<- DimPlot(pbmc, group.by = "seurat_clusters", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("3k pbmc")
+
+CombinePlots(plots = list(p1, p2))
+```
+Now, we can identify anchors between the two dataset and use these anchors to transfer the celltype labels we learned from the 10K scRNA-seq data to the 5k pmbc cells.
+
+```{r}
+transfer.anchors <- FindTransferAnchors(reference = pbmc.26k, query = pbmc, features = VariableFeatures(object = pbmc.26k), 
+    reference.assay = "RNA", query.assay = "RNA", reduction = "pcaproject")
+```
+
+
 ### read in the 3k pbmc data
 
 ```{r}
@@ -73,7 +120,7 @@ p1+p2
 ncol(pbmc.Bcell)
 ```
 
-Let's now identify the subsets using B cells
+Let's now identify the subsets using markers B cells subtypes
 
 ```{r}
 markers <- list()
@@ -141,5 +188,52 @@ pbmc.Bcell@meta.data$prediction.score.max %>%
 ```{r}
 # Number of cells after sub-setting based on CD19+ scores
 ncol(pbmc.Bcell)
+```
+
+```{r}
+pbmc.10k@meta.data %>% head()
+```
+
+```{r}
+## how many cells for each cell type? 14 cell types
+table(pbmc.10k@meta.data$CellType)
+```
+
+```{r}
+# 10k cells
+length(colnames(pbmc.10k))
+```
+
+```{r}
+p1<- DimPlot(pbmc.10k, group.by = "CellType", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("10k pbmc")
+p1
+```
+```{r}
+pbmc<- readRDS("/Users/hawacoulibaly/Documents/pbmc_3k_annotated.RDS")
+
+p2<- DimPlot(pbmc, group.by = "seurat_clusters", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("2k pbmc")
+
+CombinePlots(plots = list(p1, p2))
+```
+Now, we can identify anchors between the two dataset and use these anchors to transfer the celltype labels we learned from the 10K scRNA-seq data to the 5k pmbc cells.
+
+```{r}
+transfer.anchors <- FindTransferAnchors(reference = pbmc.10k, query = pbmc, features = VariableFeatures(object = pbmc.10k), 
+    reference.assay = "RNA", query.assay = "RNA", reduction = "pcaproject")
+
+```
+
+```{r}
+celltype.predictions <- TransferData(anchorset = transfer.anchors, refdata = pbmc.10k$CellType, 
+    dims = 1:30)
+```
+
+```{r}
+head(celltype.predictions)
+```
+
+
+```{r}
+DimPlot(pbmc, group.by = "predicted.id", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("2k pbmc")
 ```
 
