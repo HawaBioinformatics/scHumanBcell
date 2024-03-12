@@ -3,8 +3,7 @@ title: "Part 3 - B cell subtyping"
 output: html_document
 ---
 
-Single-cell analysis of human B cell maturation predicts how antibody class switching shapes selection dynamics
-In response to T cell-dependent antigens, mature B cells are stimulated to form germinal centers, which are the place of B cell affinity maturation and selection. Here, we dissected the heterogeneity of germinal center B cells and reconstructed their pathway of differentiation using single-cell transcriptomic analysis.
+Single-cell analysis of human B cell maturation predicts how antibody class switching shapes selection dynamics In response to T cell-dependent antigens, mature B cells are stimulated to form germinal centers, which are the place of B cell affinity maturation and selection. Here, we dissected the heterogeneity of germinal center B cells and reconstructed their pathway of differentiation using single-cell transcriptomic analysis.
 
 # Annotating the cell types using Human Protein Atlas
 
@@ -26,15 +25,55 @@ pbmc<- readRDS("/Users/hawacoulibaly/Documents/pbmc_3k_annotated.RDS")
 pbmc
 ```
 
-### assign B cell subtypes gene signatures
+### Evaluating Bcell subtype signatures using Ucell
 
-Score signatures using UCell
-The function AddModuleScore_UCell() allows operating directly on Seurat objects. UCell scores are calculated from raw counts or normalized data,  and returned as metadata columns.
-https://www.sciencedirect.com/science/article/pii/S2001037021002816?via%3Dihub#f0005
+Score signatures using UCell The function AddModuleScore_UCell() allows operating directly on Seurat objects. UCell scores are calculated from raw counts or normalized data, and returned as metadata columns. <https://www.sciencedirect.com/science/article/pii/S2001037021002816?via%3Dihub#f0005>
 
-Let's first define some signatures for B cell subtypes with markers retrieved from the immune cell atlas of the human tonsil and B cell maturation (https://www.tonsilimmune.org)
-https://www.science.org/doi/10.1126/sciimmunol.abe6291?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed
-Average gene expression from scRNA-seq for key marker genes in each of the 12 B cell subsets identified. The top 100 genes per cluster with p_val_adj < 0.05 and average log fold change > 0.3 are shown, with key markers of labelled.
+In contrast to Seurat's AddModuleScore, which is normalized by binning genes of similar expression at the population level, UCell scores depend only on the gene expression ranks of individual cell, and therefore they are robust across datasets regardless of dataset composition.
+
+UCell signature scores, based on the Mann-Whitney U statistic, are robust to dataset size and heterogeneity, and their calculation demands less computing time and memory than other available methods, enabling the processing of large datasets in a few minutes even on machines with limited computing power. UCell can be applied to any single-cell data matrix, and includes functions to directly interact with Seurat objects. The UCell package and documentation are available on GitHub at <https://github.com/carmonalab/UCell>
+
+Let's first define some signatures for B cell subtypes with markers retrieved from the immune cell atlas of the human tonsil and B cell maturation (<https://www.tonsilimmune.org>) <https://www.science.org/doi/10.1126/sciimmunol.abe6291?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed> Average gene expression from scRNA-seq for key marker genes in each of the 12 B cell subsets identified. The top 100 genes per cluster with p_val_adj \< 0.05 and average log fold change \> 0.3 are shown, with key markers of labelled.
+
+Let's first evaluate the CD19 expression of our B cells
+
+```{r}
+markers <- list()
+markers$Bcell <- 'CD19+'
+
+# Computing module scores for gene signatures
+pbmc <- AddModuleScore_UCell(pbmc, features = markers)
+signature.names <- paste0(names(markers), "_UCell")
+
+VlnPlot(pbmc, features = signature.names, group.by = "seurat_clusters")
+```
+
+```{r}
+# visualize the score distribution among cells for the Bcell signature
+FeaturePlot(pbmc, features = signature.names, pt.size = 2, order = T)
+```
+
+```{r}
+# Number of cells
+ncol(pbmc)
+```
+
+```{r}
+# subset by selecting cells with a Bcell score > 0
+pbmc.Bcell <- subset(x = pbmc, subset = Bcell_UCell > 0 )
+# visualize the score distribution among cells for the Bcell signature
+p1 <- FeaturePlot(pbmc, features = signature.names, pt.size = 2, order = T)
+p2 <- FeaturePlot(pbmc.Bcell, features = signature.names, pt.size = 2, order = T)
+
+p1+p2
+```
+
+```{r}
+# Number of cells after subsetting based on CD19+ scores
+ncol(pbmc.Bcell)
+```
+
+Let's now identify the subsets using B cells
 
 ```{r}
 markers <- list()
@@ -45,11 +84,9 @@ markers$Cycling <- c( 'HIST1H4C' , 'STMN1' , 'HMGB2' , 'TUBA1B' , 'H2AFZ' , 'TUB
 
 markers$DZ_GC <- c('SUGCT' , 'EZR' , 'ISG20' , 'ATP5MG' , 'SUSD3' , 'C4orf3' , 'BACH2' , 'CD27' , 'LTB' , 'SEC14L1' , 'MME' , 'NEIL1' , 'LSM10' , 'DYNLL1' , 'CD79B' , 'USP53' , 'TCL1A' , 'SERF2' , 'AICDA' , 'ACTG1' , 'SH3TC1' , 'S100A10' , 'PRPSAP2' , 'ELL3' , 'LIMD2' , 'POU2AF1' , 'SLC2A5' , 'SYNE2' , 'BCAS4' , 'OAZ1' , 'COL9A3' , 'TCEA1' , 'CD38' , 'DCAF12' , 'DAAM1' , 'USP34' , 'BLOC1S6' , 'BCL7A' , 'SYBU' , 'UBE2J1' , 'PEX5' , 'STAG3' , 'HMGN2' , 'IL4R' , 'IRF8' , 'KMT2A' , 'MEF2B' , 'AC133065.1' , 'TPD52' , 'LAMTOR5' , 'MAP1LC3B' , 'TMEM156' , 'SRSF9' , 'PPP2R5C' , 'PMAIP1' , 'PPP2CA' , 'PIM1' , 'TKT' , 'POLD4' , 'RASSF6' , 'UCP2' , 'HDAC7' , 'LPP' , 'HMGN1' , 'CD81' , 'RUBCNL' , 'LINC01991' , 'AC023590.1' , 'EHMT1' , 'AC084033.3' , 'SMIM20' , 'IFT57' , 'RNGTT' , 'ITGAE' , 'DTX1' , 'RNF144B' , 'PPP1CC' , 'ANK1' , 'METAP2' , 'SLC25A5' , 'FOXP1' , 'TAGAP' , 'STK40' , 'HRK' , 'RBBP7' , 'GCSAM' , 'TBCA' , 'SMARCB1' , 'CDK13' , 'RRM2B' , 'LYPLAL1' , 'ARL2BP' , 'COX14' , 'TP53INP1' , 'YWHAB' , 'SMIM14' , 'PRDM15' , 'CLIC4' , 'DSTN' , 'CHMP7' , 'SNTA1')
 
-
 markers$FCRL3high_GC <- c('LINC01857' , 'FCRL3' , 'FCRL2' , 'RASSF6' , 'IGHM' , 'SEMA4A' , 'RGS13' , 'EML6' , 'ZNF804A' , 'VPREB3' , 'MEF2B' , 'SIGLEC10' , 'SORL1' , 'RHEX' , 'FCRL5' , 'BIK' , 'SAMSN1' , 'KLHL6' , 'GSN' , 'POU2F2' , 'SERPINA9' , 'GCHFR' , 'ADA' , 'RGS10' , 'COL9A3' , 'FCRL4' , 'TCF4' , 'RGCC' , 'CD27' , 'LNPEP' , 'ZFP36L1' , 'AL158850.1' , 'ELL3' , 'MRNIP' , 'XIST' , 'CLEC2D' , 'RASA4' , 'ALOX5AP' , 'BACE2' , 'CTSH' , 'BCL6' , 'ZNF595' , 'TMEM243' , 'ITPR2' , 'CD70' , 'TNFRSF13C' , 'PIM2' , 'HSH2D' , 'TBC1D8' , 'ICAM3' , 'FAM129C' , 'AC104699.1' , 'CD72' , 'SOCS1' , 'BLNK' , 'LDLRAD4' , 'TTN' , 'PTPRCAP' , 'AC133065.1' , 'TRANK1' , 'STIM2' , 'DOK3' , 'PLEKHG1' , 'OGT' , 'ZNF581' , 'LPXN' , 'CCDC88A' , 'MBD4' , 'CD24' , 'MPEG1' , 'HECTD4' , 'PIM1' , 'FNBP1' , 'ITGB1' , 'KCNK12' , 'SIT1' , 'AC023590.1' , 'PPP1R14B' , 'BCAS4' , 'EBLN3P' , 'SLA' , 'DCAF12' , 'RGS1' , 'CD79B' , 'PIK3CD-AS2' , 'DENND6B' , 'ACADM' , 'DSTN' , 'SPIB' , 'CLEC17A' , 'DTX1' , 'FADS3' , 'PTRHD1' , 'PCED1B' , 'HCST' , 'ATP6V1E1' , 'GRN' , 'ST14' , 'FOXP1' , 'GOLGA8B' , 'ZNF106')
 
 markers$GC <- c('PRPSAP2' , 'SERPINA9' , 'MARCKSL1' , 'RGS13' , 'MEF2B' , 'ELL3' , 'KLHL6' , 'LRMP' , 'LMO2' , 'CAMK1' , 'NEIL1' , 'MYO1E' , 'CD53' , 'HSPA1B' , 'HSPA6' , 'GMDS' , 'AC012368.1' , 'AC023590.1' , 'SMIM14' , 'DEF8' , 'VPREB3' , 'CD40' , 'DNAJC10' , 'DNAJB1' , 'LPP' , 'VNN2' , 'PHF6' , 'HMCES' , 'CD22' , 'PAG1' , 'FCRLA' , 'HSPA1A' , 'TOX' , 'HTR3A' , 'DHRS9' , 'BASP1' , 'SEMA4A' , 'SYNE2' , 'FGD6' , 'RFTN1' , 'LCK' , 'MCTP2' , 'SNAP23' , 'ACTG1' , 'LTB' , 'CTSH' , 'UCP2' , 'LCP1' , 'MS4A1' , 'GPR160' , 'SYPL1' , 'ZNF581' , 'LINC01857' , 'MTMR14' , 'RASL11A' , 'CCDC88A' , 'TMEM123' , 'SEL1L3' , 'TERF2IP' , 'BRWD1' , 'CPNE5' , 'HSPB1' , 'ALDH2' , 'LAT2' , 'CSK' , 'PLEK' , 'PLCG2' , 'GRHPR' , 'MBD4' , 'WIPF1' , 'ALOX5AP' , 'CPNE3' , 'SORL1' , 'SGK1' , 'CD38' , 'ACY3' , 'CUX1' , 'BPNT1' , 'RBM6' , 'LIMD2' , 'GPR18' , 'ACTR3' , 'HLA-DMB' , 'SYVN1' , 'SWAP70' , 'CNN2' , 'FERMT3' , 'BCL6' , 'GGA2' , 'TUBB3' , 'HOPX' , 'BACH2' , 'IRF8' , 'SERF2' , 'CD79B' , 'ZFAND6' , 'LYPLAL1' , 'ACAP2' , 'LAPTM5' , 'METAP2' , 'PARP1')
-
 
 markers$LZ_GC <- c('BCL2A1' , 'EBI3' , 'MIR155HG' , 'GMDS' , 'HOPX' , 'TRAF4' , 'DUSP2' , 'PLEK' , 'BIRC3' , 'LMO2' , 'CD40' , 'VASP' , 'LCP1' , 'DDX21' , 'PRMT1' , 'SERPINA9' , 'ABRACL' , 'PKM' , 'BIK' , 'SMS' , 'HSP90AB1' , 'EIF5A' , 'RPL22L1' , 'FABP5' , 'CD83' , 'PRDX1' , 'OTULIN' , 'SYNGR2' , 'RGS13' , 'LDHA' , 'HSPA5' , 'RGS10' , 'FYTTD1' , 'MARCKSL1' , 'REL' , 'C1QBP' , 'NOP16' , 'PDIA6' , 'NFKBID' , 'RAB3GAP2' , 'MCOLN2' , 'CD82' , 'FCRL5' , 'SWAP70' , 'NCL' , 'MGLL' , 'MTHFD2' , 'HLA-DQA1' , 'NFKB2' , 'IL4I1' , 'TIMM13' , 'BATF' , 'ENO1' , 'NIN' , 'RFTN1' , 'ODC1' , 'CCDC28B' , 'RABGAP1L' , 'NHP2' , 'TMEM123' , 'RELB' , 'MDFIC' , 'PIM3' , 'PRDX6' , 'ZNF593' , 'HLA-DRB1' , 'PPA1' , 'PDIA4' , 'PARP1' , 'ATF5' , 'MYO1E' , 'NME1' , 'ARPC1B' , 'CTSH' , 'CCT3' , 'ATIC' , 'RAN' , 'NFKB1' , 'TRMT1' , 'HERPUD1' , 'BID' , 'HSPA8' , 'HLA-DRB5' , 'LCK' , 'CSTB' , 'CCT2' , 'IFRD2' , 'MRPL4' , 'SNX11' , 'LYSMD2' , 'DKC1' , 'HLA-DQB1' , 'LPCAT1' , 'SPIB' , 'NDUFAF8' , 'TIMM8B' , 'LRMP' , 'NPM1' , 'BASP1' , 'STAG3')
 
@@ -64,37 +101,45 @@ markers$Plasmablast <- c('IGHG' , 'IGKsum' , 'IGHVDJsum' , 'IGLsum' , 'JCHAIN' ,
 markers$Pre_GC <- c('MIR155HG' , 'CCND2' , 'PSME2' , 'FCER2' , 'EBI3' , 'DDX21' , 'SYNGR2' , 'HSP90AB1' , 'NOP16' , 'CD83' , 'NCL' , 'EIF5A' , 'DNPH1' , 'GPX4' , 'MYC' , 'IFITM2' , 'CDKN1A' , 'NHP2' , 'NFKBID' , 'NME2' , 'NOLC1' , 'PARVB' , 'LILRA4' , 'RPL22L1' , 'ENO1' , 'HLA-DQA1' , 'TRAF4' , 'PA2G4' , 'SRM' , 'BHLHE40' , 'MAT2A' , 'FKBP4' , 'PRMT1' , 'SNHG8' , 'CALR' , 'SNHG15' , 'BATF' , 'MRTO4' , 'PRDX1' , 'IFRD2' , 'ACP5' , 'DUSP2' , 'ATIC' , 'EBNA1BP2' , 'IRF4' , 'PHB' , 'FABP5' , 'YBX1' , 'PAICS' , 'GM2A' , 'TXN' , 'FCMR' , 'EIF4A1' , 'PPA1' , 'TMEM147' , 'APRT' , 'PHACTR1' , 'NME1' , 'HSPA8' , 'DCTPP1' , 'TYMP' , 'LDHA' , 'TNFAIP3' , 'FBL' , 'MIF' , 'TMEM109' , 'FCRL5' , 'SEMA7A' , 'CHI3L2' , 'GNL3' , 'WARS' , 'C19orf70' , 'CDK4' , 'RRP7A' , 'NFKBIA' , 'APEX1' , 'ZFP36' , 'SLAMF1' , 'EEF1B2' , 'EIF5B' , 'HIVEP3' , 'IMPDH2' , 'LY6E' , 'NFKB1' , 'PDCD4' , 'SERBP1' , 'HSPD1' , 'PUM3' , 'CCDC85B' , 'HLA-A' , 'ZFP36L1' , 'SLC38A1' , 'AKR1A1')
 
 markers$Pre_PB <- c('RGS13' , 'RASSF6' , 'HOPX' , 'FRZB' , 'BIK' , 'VPREB3' , 'MEF2B' , 'ALDH2' , 'CAMK1' , 'PRPSAP2' , 'FAM3C' , 'PRDX1' , 'MARCKSL1' , 'HMCES' , 'DHRS9' , 'SERPINA9' , 'AC104699.1' , 'LRMP' , 'XBP1' , 'LINC01857' , 'ERH' , 'CCDC88A' , 'FEZ1' , 'BAIAP2L1' , 'HTR3A' , 'POU2AF1' , 'AC023590.1' , 'MDFIC' , 'BST2' , 'BTNL9' , 'NANS' , 'GPR137B' , 'LMO4' , 'SEMA4A' , 'HDAC9' , 'PRDM1' , 'CD9' , 'GCHFR' , 'DUSP2' , 'ABRACL' , 'FGFR1' , 'PRKCD' , 'HSPB1' , 'LCK' , 'CD53' , 'SUSD3' , 'REEP5' , 'RGS1' , 'PELI1' , 'A4GALT' , 'HERPUD1' , 'PARP1' , 'KLHL6' , 'CD38' , 'TRAF4' , 'RGS2' , 'PDIA6' , 'ZNF608' , 'HIST1H2AC' , 'PAG1' , 'RBKS' , 'ATP6V1G1' , 'ARHGAP10' , 'LHFPL2' , 'RELB' , 'ANP32B' , 'RNGTT' , 'EBF1' , 'HLA-DRB5' , 'HLA-DQA1' , 'HSP90B1' , 'AMZ2' , 'C7orf50' , 'RASL11A' , 'SMAP1' , 'HIST1H2BK' , 'DUSP4' , 'ARPC2' , 'RAB3GAP2' , 'ARPC5' , 'POU2F2' , 'PDIA4' , 'CD74' , 'CYBA' , 'GRN' , 'PDE4D' , 'DUSP22' , 'SIT1' , 'HLA-DMB' , 'CD82' , 'HLA-DRB1' , 'SEL1L3' , 'HLA-DMA' , 'CAMK2B' , 'PCED1B' , 'TOX' , 'SWAP70' , 'MSI2' , 'ZCCHC7' , 'PKM')
+
+markers
 ```
 
-
 ```{r}
-pbmc.Bcell <- AddModuleScore_UCell(pbmc, features = markers)
+# Computing module scores for gene signatures
+pbmc.Bcell <- AddModuleScore_UCell(pbmc.Bcell, features = markers)
 signature.names <- paste0(names(markers), "_UCell")
 
 VlnPlot(pbmc.Bcell, features = signature.names, group.by = "seurat_clusters")
 ```
-```{r}
-# find max scores
-df <- pbmc.Bcell[[c('Naive_UCell', 'Marginal_Zone_UCell','Plasma_UCell', 'GC_DarkZone_UCell', 'GC_LightZone_UCell', 'GC_LZ_help_UCell','GC_DZ_entry_UCell','Memory_UCell','PreMemory_UCell')]]
-df[, "prediction.score.max"] <- apply(df[, 1:9], 1, max)
-
-df <- df[['prediction.score.max']]
-```
 
 ```{r}
 # add max score metadata to seurat object
+df <- pbmc.Bcell[[c('Activated_UCell','Cycling_UCell','DZ_GC_UCell','FCRL3high_GC_UCell','GC_UCell','LZ_GC_UCell','MBC_UCell','MBC_FCRL4_UCell','DZ_GC_UCell','FCRL3high_GC_UCell','GC_UCell','LZ_GC_UCell','MBC_UCell','MBC_FCRL4_UCell','Naive_UCell','Plasmablast_UCell','Pre_GC_UCell','Pre_PB_UCell')]]
+
+df[, "prediction.score.max"] <- apply(df[, 1:9], 1, max)
+
+df <- df[['prediction.score.max']]
+
 pbmc.Bcell@meta.data$prediction.score.max <- df
+
+print('DONE')
 ```
 
-confidence of the Ucell transfering
+Plot distribution of Ucell confidence scores
+
 ```{r}
 pbmc.Bcell@meta.data$prediction.score.max %>%
   tibble::enframe() %>%
   ggplot(aes(x=value)) + 
   geom_histogram(color = "white", bins = 50) +
-  geom_vline(xintercept = 0.9, linetype = 2, color = "red") + 
+  geom_vline(xintercept = 0.4, linetype = 2, color = "red") + 
   theme_classic(base_size = 14) +
-  ggtitle("distribution of max prediciton score")
-```
+  ggtitle("distribution of Bcell subtype signature prediction score")
 
+```
+```{r}
+# Number of cells after sub-setting based on CD19+ scores
+ncol(pbmc.Bcell)
+```
 

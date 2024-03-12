@@ -1,13 +1,9 @@
-scMouseBcellFlu
+# [**scHumanBcellFlu**]{.underline}
 
-This is the repository associated with the single cell RNA analysis after respiratory influenza virus infection reveals spatiotemporal dynamics of B cell subtypes.
-This repository contains the code and supporting files necessary to reproduce the analyses reported for the prokect. In essence, the anlaysis workflow herein was done using the Seurat analysis philosophy.
+This is the repository associated with the single cell RNA analysis after respiratory influenza A viral infection analysis. This pipeline reveals the dynamics of B cell sub-types.
 
-Single-cell RNA-seq analysis
+The repository contains the code and supporting files necessary to reproduce the analyses reported for the project. In essence, the analysis workflow herein was done using the Seurat analysis pipeline.
 
-To re-run the analysis of the scRNA-Seq data, the necessary workflow and scripts can be found in the scripts/scRNAseq_pipeline/ subdirectory.
+**Single-cell RNA-seq analysis, Cluster annotation and analysis**
 
-Cluster annotaion and analysis
-
-Scripts necessary to reproduce the analysis of the B-cell sequencing data can be found in the scripts/VDJ_analysis/ subdirectory.
-
+Scripts and workflow necessary to reproduce the scRNA-Seq analysis can be found in the [scHumanBcellFlu/analysis](https://github.com/HawaBioinformatics/scHumanBcellFlu/tree/main/analysis) sub-directory.
