@@ -18,7 +18,7 @@ library(UCell)
 ```
 
 
-read in the reference pbmc data
+read in the reference pbmc data obtained from 
 
 ```{r}
 pbmc.ref <- readRDS("/Users/hawacoulibaly/Downloads/SEURAT_OBJECTS/HumanTonsil_BCells_scRNA_SeuratObject.rds")
@@ -31,59 +31,59 @@ pbmc.ref
 ```
 
 ```{r}
-ncol(pbmc.44k)
+ncol(pbmc.ref)
 ```
 
 ```{r}
-pbmc.44k@meta.data %>% head()
+pbmc.ref@meta.data %>% head()
 ```
 Next step discovers the most variable features (genes) in Bcell susets - these are usually most interesting for downstream analysis.
 
 ```{r}
-pbmc.44k <- FindVariableFeatures(pbmc.44k, selection.method = "vst", nfeatures = 2000)
+pbmc.ref <- FindVariableFeatures(pbmc.ref, selection.method = "vst", nfeatures = 4000)
 ```
 
 Identify the 10 most highly variable genes in Bcell subtypes:
 
 ```{r}
-top10 <- head(VariableFeatures(pbmc.44k), 10)
+top10 <- head(VariableFeatures(pbmc.ref), 10)
 top10
 ```
 
 ```{r}
-plot1 <- VariableFeaturePlot(pbmc.44k)
+plot1 <- VariableFeaturePlot(pbmc.ref)
 LabelPoints(plot = plot1, points = top10, repel = TRUE, xnudge = 0, ynudge = 0)
 ```
 
 
 ```{r}
 ## how many cells for each cell type? 12 B  cell sub-types
-table(pbmc.44k@meta.data$CellType)
+table(pbmc.ref@meta.data$CellType)
 ```
 Notice that only B cell subtypes are present
 
 ```{r}
 # 10k cells
-length(colnames(pbmc.44k))
+length(colnames(pbmc.ref))
 ```
 
 ```{r}
-p1<- DimPlot(pbmc.44k, group.by = "CellType", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("44k pbmc")
+p1<- DimPlot(pbmc.ref, group.by = "CellType", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("44k pbmc")
 ```
 
 
 ```{r}
-# read in our data
+# read in our 3k human PBMC data
 pbmc<- readRDS("/Users/hawacoulibaly/Documents/pbmc_3k_annotated.RDS")
 
-p2<- DimPlot(pbmc, group.by = "seurat_clusters", label = TRUE, repel = TRUE)+xlim(-15, 20)+ylim(-15, 7) + NoLegend() + ggtitle("3k pbmc")
+p2<- DimPlot(pbmc, group.by = "seurat_clusters", label = TRUE, repel = TRUE)+xlim(-15, 20)+ylim(-15, 5) + NoLegend() + ggtitle("3k pbmc")
 
 CombinePlots(plots = list(p1, p2))
 ```
-Now, we can identify anchors between the two dataset and use these anchors to transfer the celltype labels we learned from the 10K scRNA-seq data to the 5k pmbc cells.
+Now, we can identify anchors between the two dataset and use these anchors to transfer the celltype labels we learned from the 10K scRNA-seq data to the 3k pmbc cells.
 
 ```{r}
-transfer.anchors <- FindTransferAnchors(reference = pbmc.44k, query = pbmc, features = VariableFeatures(object = pbmc.44k), 
+transfer.anchors <- FindTransferAnchors(reference = pbmc.ref, query = pbmc, features = VariableFeatures(object = pbmc.ref), 
     reference.assay = "RNA", query.assay = "RNA", reduction = "pcaproject")
 ```
 
@@ -93,12 +93,12 @@ To transfer the cluster ids, we provide a vector of previously annotated cell ty
 
 
 ```{r}
-ElbowPlot(pbmc.44k)
+ElbowPlot(pbmc.ref)
 ```
 
 
 ```{r}
-celltype.predictions <- TransferData(anchorset = transfer.anchors, refdata = pbmc.44k$CellType, dims = 1:10)
+celltype.predictions <- TransferData(anchorset = transfer.anchors, refdata = pbmc.ref$CellType, dims = 1:10)
 ```
 ```{r}
 head(celltype.predictions)
@@ -111,7 +111,7 @@ pbmc@meta.data %>% head()
 ```
 
 ```{r}
-DimPlot(pbmc, group.by = "predicted.id", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("3k pbmc")
+DimPlot(pbmc, group.by = "predicted.id", label = TRUE, repel = TRUE)+xlim(-15, 20)+ylim(-15, 7) + NoLegend() + ggtitle("3k pbmc")
 ```
 confidence of the label transfering
 
@@ -124,179 +124,5 @@ pbmc@meta.data$prediction.score.max %>%
   geom_vline(xintercept = 0.9, linetype = 2, color = "red") + 
   theme_classic(base_size = 14) +
   ggtitle("distribution of max prediciton score")
-```
-
-
-### read in the 3k pbmc data
-
-```{r}
-# this returns the seurat clustered object
-pbmc<- readRDS("/Users/hawacoulibaly/Documents/pbmc_3k_annotated.RDS")
-pbmc
-```
-
-### Evaluating Bcell subtype signatures using Ucell
-
-Score signatures using UCell The function AddModuleScore_UCell() allows operating directly on Seurat objects. UCell scores are calculated from raw counts or normalized data, and returned as metadata columns. <https://www.sciencedirect.com/science/article/pii/S2001037021002816?via%3Dihub#f0005>
-
-In contrast to Seurat's AddModuleScore, which is normalized by binning genes of similar expression at the population level, UCell scores depend only on the gene expression ranks of individual cell, and therefore they are robust across datasets regardless of dataset composition.
-
-UCell signature scores, based on the Mann-Whitney U statistic, are robust to dataset size and heterogeneity, and their calculation demands less computing time and memory than other available methods, enabling the processing of large datasets in a few minutes even on machines with limited computing power. UCell can be applied to any single-cell data matrix, and includes functions to directly interact with Seurat objects. The UCell package and documentation are available on GitHub at <https://github.com/carmonalab/UCell>
-
-Let's first define some signatures for B cell subtypes with markers retrieved from the immune cell atlas of the human tonsil and B cell maturation (<https://www.tonsilimmune.org>) <https://www.science.org/doi/10.1126/sciimmunol.abe6291?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed> Average gene expression from scRNA-seq for key marker genes in each of the 12 B cell subsets identified. The top 100 genes per cluster with p_val_adj \< 0.05 and average log fold change \> 0.3 are shown, with key markers of labelled.
-
-Let's first evaluate the CD19 expression of our B cells
-
-```{r}
-markers <- list()
-markers$Bcell <- 'CD19+'
-
-# Computing module scores for gene signatures
-pbmc <- AddModuleScore_UCell(pbmc, features = markers)
-signature.names <- paste0(names(markers), "_UCell")
-
-VlnPlot(pbmc, features = signature.names, group.by = "seurat_clusters")
-```
-
-```{r}
-# visualize the score distribution among cells for the Bcell signature
-FeaturePlot(pbmc, features = signature.names, pt.size = 2, order = T)
-```
-
-```{r}
-# Number of cells
-ncol(pbmc)
-```
-
-```{r}
-# subset by selecting cells with a Bcell score > 0
-pbmc.Bcell <- subset(x = pbmc, subset = Bcell_UCell > 0 )
-# visualize the score distribution among cells for the Bcell signature
-p1 <- FeaturePlot(pbmc, features = signature.names, pt.size = 2, order = T)
-p2 <- FeaturePlot(pbmc.Bcell, features = signature.names, pt.size = 2, order = T)
-
-p1+p2
-```
-
-```{r}
-# Number of cells after subsetting based on CD19+ scores
-ncol(pbmc.Bcell)
-```
-
-Let's now identify the subsets using markers B cells subtypes
-
-```{r}
-markers <- list()
-
-markers$Activated <- c('EGR1' , 'FOSB' , 'CD69' , 'DUSP2' , 'FOS' , 'NFKBIA' , 'IER2' , 'JUN' , 'PPP1R15A' , 'ZFP36' , 'DUSP1' , 'NR4A2' , 'JUNB' , 'NR4A1' , 'CD83' , 'BCL2A1' , 'KLF6' , 'TNFAIP3' , 'CDKN1A' , 'CSRNP1' , 'MIR155HG' , 'JUND' , 'NFKBID' , 'TUBA1A' , 'NFKBIZ' , 'YPEL5' , 'AC103591.3' , 'TSC22D3' , 'BTG2' , 'GPR183' , 'KDM6B' , 'MYADM' , 'MYC' , 'CXCR4' , 'PNRC1' , 'SLC2A3' , 'AC245014.3' , 'THAP2' , 'ZNF331' , 'NR4A3' , 'IRF2BP2' , 'IL6' , 'SERTAD1' , 'CCNL1' , 'PHACTR1' , 'GADD45B' , 'ZFP36L1' , 'ARL4A' , 'EIF1' , 'ZBTB10' , 'CD44' , 'ZFAND5' , 'FDCSP' , 'CYCS' , 'MCL1' , 'KLF2' , 'H3F3B' , 'AC007952.4' , 'HLA-A' , 'REL' , 'CD55' , 'RBKS' , 'DDX3X' , 'ZFP36L2' , 'CCR7' , 'MAP3K8' , 'CHMP1B' , 'SNX9' , 'DNAJA1' , 'TNF' , 'PMAIP1' , 'IRF1' , 'PIM3' , 'TAGAP' , 'EGR3' , 'KLF10' , 'CCNH' , 'SAT1' , 'BTG1' , 'SRSF5' , 'ATP2B1-AS1' , 'DDX3Y' , 'LDLRAD4' , 'IFRD1' , 'ADGRE5' , 'SRGN' , 'DDIT3' , 'IDS' , 'IRF4' , 'DDX5' , 'FTH1' , 'EMP3' , 'NFKBIB' , 'NFKB2' , 'PTGER4' , 'NUP58' , 'AREG' , 'SNHG15' , 'AF213884.3' , 'RASGEF1B' , 'HLA-DQB1')
-
-markers$Cycling <- c( 'HIST1H4C' , 'STMN1' , 'HMGB2' , 'TUBA1B' , 'H2AFZ' , 'TUBB' , 'UBE2C' , 'HMGN2' , 'DUT' , 'TYMS' , 'TUBB4B' , 'HMGB1' , 'MKI67' , 'PTTG1' , 'TOP2A' , 'NUSAP1' , 'DEK' , 'H2AFV' , 'CENPF' , 'CKS2' , 'SMC4' , 'CDC20' , 'TK1' , 'MCM7' , 'CENPM' , 'PCNA' , 'H2AFX' , 'CDK1' , 'CDKN3' , 'HIST1H1B' , 'CDCA7' , 'CCNB2' , 'DNMT1' , 'RANBP1' , 'GAPDH' , 'BIRC5' , 'CKS1B' , 'DHFR' , 'JPT1' , 'PLK1' , 'GINS2' , 'HMGA1' , 'AURKB' , 'TPX2' , 'FABP5' , 'RAN' , 'CCNB1' , 'CENPU' , 'ZWINT' , 'H2AFY' , 'KPNA2' , 'CDCA3' , 'PCLAF' , 'KIF22' , 'SLBP' , 'MRPL51' , 'TMPO' , 'LDHA' , 'PTMA' , 'ASF1B' , 'CARHSP1' , 'CENPW' , 'SNRPD1' , 'SIVA1' , 'CCNA2' , 'MYBL2' , 'SNRPG' , 'ANP32B' , 'HIST1H3B' , 'HMGN1' , 'MCM3' , 'GSTP1' , 'LMNB1' , 'SLC25A5' , 'ASPM' , 'CALM3' , 'COX8A' , 'KIFC1' , 'TPI1' , 'TUBA1C' , 'NUCKS1' , 'UHRF1' , 'CALM2' , 'RPA3' , 'RRM1' , 'CBX3' , 'MCM4' , 'CENPE' , 'UBE2S' , 'FEN1' , 'PRDX3' , 'PKM' , 'SMC2' , 'PPIA' , 'CDCA8' , 'ANP32E' , 'MAD2L1' , 'CLSPN' , 'MND1' , 'HIST1H1E' , 'DNAJC9')
-
-markers$DZ_GC <- c('SUGCT' , 'EZR' , 'ISG20' , 'ATP5MG' , 'SUSD3' , 'C4orf3' , 'BACH2' , 'CD27' , 'LTB' , 'SEC14L1' , 'MME' , 'NEIL1' , 'LSM10' , 'DYNLL1' , 'CD79B' , 'USP53' , 'TCL1A' , 'SERF2' , 'AICDA' , 'ACTG1' , 'SH3TC1' , 'S100A10' , 'PRPSAP2' , 'ELL3' , 'LIMD2' , 'POU2AF1' , 'SLC2A5' , 'SYNE2' , 'BCAS4' , 'OAZ1' , 'COL9A3' , 'TCEA1' , 'CD38' , 'DCAF12' , 'DAAM1' , 'USP34' , 'BLOC1S6' , 'BCL7A' , 'SYBU' , 'UBE2J1' , 'PEX5' , 'STAG3' , 'HMGN2' , 'IL4R' , 'IRF8' , 'KMT2A' , 'MEF2B' , 'AC133065.1' , 'TPD52' , 'LAMTOR5' , 'MAP1LC3B' , 'TMEM156' , 'SRSF9' , 'PPP2R5C' , 'PMAIP1' , 'PPP2CA' , 'PIM1' , 'TKT' , 'POLD4' , 'RASSF6' , 'UCP2' , 'HDAC7' , 'LPP' , 'HMGN1' , 'CD81' , 'RUBCNL' , 'LINC01991' , 'AC023590.1' , 'EHMT1' , 'AC084033.3' , 'SMIM20' , 'IFT57' , 'RNGTT' , 'ITGAE' , 'DTX1' , 'RNF144B' , 'PPP1CC' , 'ANK1' , 'METAP2' , 'SLC25A5' , 'FOXP1' , 'TAGAP' , 'STK40' , 'HRK' , 'RBBP7' , 'GCSAM' , 'TBCA' , 'SMARCB1' , 'CDK13' , 'RRM2B' , 'LYPLAL1' , 'ARL2BP' , 'COX14' , 'TP53INP1' , 'YWHAB' , 'SMIM14' , 'PRDM15' , 'CLIC4' , 'DSTN' , 'CHMP7' , 'SNTA1')
-
-markers$FCRL3high_GC <- c('LINC01857' , 'FCRL3' , 'FCRL2' , 'RASSF6' , 'IGHM' , 'SEMA4A' , 'RGS13' , 'EML6' , 'ZNF804A' , 'VPREB3' , 'MEF2B' , 'SIGLEC10' , 'SORL1' , 'RHEX' , 'FCRL5' , 'BIK' , 'SAMSN1' , 'KLHL6' , 'GSN' , 'POU2F2' , 'SERPINA9' , 'GCHFR' , 'ADA' , 'RGS10' , 'COL9A3' , 'FCRL4' , 'TCF4' , 'RGCC' , 'CD27' , 'LNPEP' , 'ZFP36L1' , 'AL158850.1' , 'ELL3' , 'MRNIP' , 'XIST' , 'CLEC2D' , 'RASA4' , 'ALOX5AP' , 'BACE2' , 'CTSH' , 'BCL6' , 'ZNF595' , 'TMEM243' , 'ITPR2' , 'CD70' , 'TNFRSF13C' , 'PIM2' , 'HSH2D' , 'TBC1D8' , 'ICAM3' , 'FAM129C' , 'AC104699.1' , 'CD72' , 'SOCS1' , 'BLNK' , 'LDLRAD4' , 'TTN' , 'PTPRCAP' , 'AC133065.1' , 'TRANK1' , 'STIM2' , 'DOK3' , 'PLEKHG1' , 'OGT' , 'ZNF581' , 'LPXN' , 'CCDC88A' , 'MBD4' , 'CD24' , 'MPEG1' , 'HECTD4' , 'PIM1' , 'FNBP1' , 'ITGB1' , 'KCNK12' , 'SIT1' , 'AC023590.1' , 'PPP1R14B' , 'BCAS4' , 'EBLN3P' , 'SLA' , 'DCAF12' , 'RGS1' , 'CD79B' , 'PIK3CD-AS2' , 'DENND6B' , 'ACADM' , 'DSTN' , 'SPIB' , 'CLEC17A' , 'DTX1' , 'FADS3' , 'PTRHD1' , 'PCED1B' , 'HCST' , 'ATP6V1E1' , 'GRN' , 'ST14' , 'FOXP1' , 'GOLGA8B' , 'ZNF106')
-
-markers$GC <- c('PRPSAP2' , 'SERPINA9' , 'MARCKSL1' , 'RGS13' , 'MEF2B' , 'ELL3' , 'KLHL6' , 'LRMP' , 'LMO2' , 'CAMK1' , 'NEIL1' , 'MYO1E' , 'CD53' , 'HSPA1B' , 'HSPA6' , 'GMDS' , 'AC012368.1' , 'AC023590.1' , 'SMIM14' , 'DEF8' , 'VPREB3' , 'CD40' , 'DNAJC10' , 'DNAJB1' , 'LPP' , 'VNN2' , 'PHF6' , 'HMCES' , 'CD22' , 'PAG1' , 'FCRLA' , 'HSPA1A' , 'TOX' , 'HTR3A' , 'DHRS9' , 'BASP1' , 'SEMA4A' , 'SYNE2' , 'FGD6' , 'RFTN1' , 'LCK' , 'MCTP2' , 'SNAP23' , 'ACTG1' , 'LTB' , 'CTSH' , 'UCP2' , 'LCP1' , 'MS4A1' , 'GPR160' , 'SYPL1' , 'ZNF581' , 'LINC01857' , 'MTMR14' , 'RASL11A' , 'CCDC88A' , 'TMEM123' , 'SEL1L3' , 'TERF2IP' , 'BRWD1' , 'CPNE5' , 'HSPB1' , 'ALDH2' , 'LAT2' , 'CSK' , 'PLEK' , 'PLCG2' , 'GRHPR' , 'MBD4' , 'WIPF1' , 'ALOX5AP' , 'CPNE3' , 'SORL1' , 'SGK1' , 'CD38' , 'ACY3' , 'CUX1' , 'BPNT1' , 'RBM6' , 'LIMD2' , 'GPR18' , 'ACTR3' , 'HLA-DMB' , 'SYVN1' , 'SWAP70' , 'CNN2' , 'FERMT3' , 'BCL6' , 'GGA2' , 'TUBB3' , 'HOPX' , 'BACH2' , 'IRF8' , 'SERF2' , 'CD79B' , 'ZFAND6' , 'LYPLAL1' , 'ACAP2' , 'LAPTM5' , 'METAP2' , 'PARP1')
-
-markers$LZ_GC <- c('BCL2A1' , 'EBI3' , 'MIR155HG' , 'GMDS' , 'HOPX' , 'TRAF4' , 'DUSP2' , 'PLEK' , 'BIRC3' , 'LMO2' , 'CD40' , 'VASP' , 'LCP1' , 'DDX21' , 'PRMT1' , 'SERPINA9' , 'ABRACL' , 'PKM' , 'BIK' , 'SMS' , 'HSP90AB1' , 'EIF5A' , 'RPL22L1' , 'FABP5' , 'CD83' , 'PRDX1' , 'OTULIN' , 'SYNGR2' , 'RGS13' , 'LDHA' , 'HSPA5' , 'RGS10' , 'FYTTD1' , 'MARCKSL1' , 'REL' , 'C1QBP' , 'NOP16' , 'PDIA6' , 'NFKBID' , 'RAB3GAP2' , 'MCOLN2' , 'CD82' , 'FCRL5' , 'SWAP70' , 'NCL' , 'MGLL' , 'MTHFD2' , 'HLA-DQA1' , 'NFKB2' , 'IL4I1' , 'TIMM13' , 'BATF' , 'ENO1' , 'NIN' , 'RFTN1' , 'ODC1' , 'CCDC28B' , 'RABGAP1L' , 'NHP2' , 'TMEM123' , 'RELB' , 'MDFIC' , 'PIM3' , 'PRDX6' , 'ZNF593' , 'HLA-DRB1' , 'PPA1' , 'PDIA4' , 'PARP1' , 'ATF5' , 'MYO1E' , 'NME1' , 'ARPC1B' , 'CTSH' , 'CCT3' , 'ATIC' , 'RAN' , 'NFKB1' , 'TRMT1' , 'HERPUD1' , 'BID' , 'HSPA8' , 'HLA-DRB5' , 'LCK' , 'CSTB' , 'CCT2' , 'IFRD2' , 'MRPL4' , 'SNX11' , 'LYSMD2' , 'DKC1' , 'HLA-DQB1' , 'LPCAT1' , 'SPIB' , 'NDUFAF8' , 'TIMM8B' , 'LRMP' , 'NPM1' , 'BASP1' , 'STAG3')
-
-markers$MBC <- c('KLF2' , 'GPR183' , 'CD44' , 'TXNIP' , 'TNFRSF13B' , 'HLA-A' , 'ZFP36L2' , 'CD1C' , 'KLF6' , 'HLA-C' , 'ACP5' , 'CAPG' , 'FXYD5' , 'S100A4' , 'RPS29' , 'SAMSN1' , 'B2M' , 'CD24' , 'PARP15' , 'EMP3' , 'VIM' , 'TSC22D3' , 'RPS27' , 'PDE4B' , 'PNRC1' , 'BANK1' , 'CD48' , 'FCMR' , 'SESN3' , 'S100A6' , 'HLA-F' , 'IFITM1' , 'RPL38' , 'LY6E' , 'RPL34' , 'RNASET2' , 'IFITM2' , 'HLA-E' , 'LDLRAD4' , 'TOMM7' , 'ZFP36' , 'CRIP1' , 'RPS14' , 'RPL36' , 'CXCR4' , 'RPL30' , 'AHNAK' , 'HLA-B' , 'SP110' , 'SELL' , 'SARAF' , 'RGCC' , 'PDCD4' , 'ADGRE5' , 'PLAC8' , 'RPS21' , 'CLECL1' , 'RPL11' , 'RPL9' , 'RPL39' , 'PLP2' , 'RPL32' , 'ARHGAP24' , 'HLA-DPB1' , 'RPS28' , 'CD52' , 'RPL13' , 'DUSP4' , 'MALAT1' , 'PFDN5' , 'RPS25' , 'TCF4' , 'SIDT1' , 'TRBC2' , 'EML4' , 'IDS' , 'NOP53' , 'YPEL5' , 'LITAF' , 'RPS18' , 'RNF213' , 'RPL13A' , 'RPL35A')
-
-markers$MBC_FCRL4 <- c('VIM' , 'PLAC8' , 'FCRL4' , 'ACP5' , 'TNFRSF13B' , 'TESC' , 'CAPG' , 'S100A4' , 'IFITM1' , 'S100A11' , 'FCRL5' , 'RAB31' , 'CD44' , 'CCDC50' , 'PTPN1' , 'DUSP4' , 'FLNA' , 'PLD4' , 'IFITM2' , 'CCR6' , 'COTL1' , 'HCK' , 'SH3BGRL3' , 'CD99' , 'SUB1' , 'S100A6' , 'PLP2' , 'EMP3' , 'GSN' , 'CRIP1' , 'CLECL1' , 'HLA-DPB1' , 'CD52' , 'GPR183' , 'HCST' , 'DDIT4' , 'RNASET2' , 'HLA-A' , 'FGR' , 'ENTPD1' , 'CLIC1' , 'LY6E' , 'CD82' , 'VSIR' , 'PYCARD' , 'B2M' , 'FGD2' , 'OSTN-AS1' , 'FXYD5' , 'CTSH' , 'ARL6IP5' , 'PTPRCAP' , 'LSP1' , 'BHLHE41' , 'VAMP5' , 'CD1C' , 'RNF213' , 'ZEB2' , 'ICAM3' , 'IFNGR1' , 'SEMA4D' , 'PREX1' , 'NCR3' , 'GRN' , 'CD48' , 'CELF2' , 'FTH1' , 'ZYX' , 'FCGR2B' , 'KIAA1551' , 'LGALS1' , 'ZBED2' , 'PARP15' , 'LITAF' , 'SP110' , 'HLA-E' , 'RAB24' , 'RAC2' , 'TYMP' , 'PSMB9' , 'TMSB4X' , 'HLA-C' , 'RUNX3' , 'BANK1' , 'SPIB' , 'TAP1' , 'PKIG' , 'CIB1' , 'GPR82' , 'SELENOW' , 'LIMK1' , 'HSH2D' , 'ITGAX' , 'ARHGAP9')
-
-markers$Naive <- c('TXNIP' , 'FCER2' , 'FCMR' , 'SELL' , 'LINC00926' , 'KLF2' , 'IFITM2' , 'SARAF' , 'HVCN1' , 'IFITM1' , 'BANK1' , 'JUNB' , 'ZFP36L2' , 'CD72' , 'CXCR4' , 'S1PR1' , 'PDE4B' , 'HLA-E' , 'PLPP5' , 'TRBC2' , 'FXYD5' , 'C1orf162' , 'ADAM28' , 'ITGA4' , 'CLEC2B' , 'FAM129C' , 'ADK' , 'SLC2A3' , 'PLAC8' , 'CD69' , 'HLA-A' , 'CD52' , 'ITM2B' , 'ANXA6' , 'YBX3' , 'COL19A1' , 'CELF2' , 'TMEM2' , 'FCRL1' , 'BTG1' , 'SP100' , 'ZNF331' , 'PDLIM1' , 'TRAF3IP3' , 'LY6E' , 'B2M' , 'LINC02397' , 'CHI3L2' , 'RNASET2' , 'HLA-DPA1' , 'IFITM3' , 'CCR7' , 'VPS37B' , 'RASGRP2' , 'HLA-DPB1' , 'ARHGAP15' , 'LAIR1' , 'RALGPS2' , 'PARP15' , 'CCR6' , 'CR2' , 'LBH' , 'FTL' , 'HLA-DRA' , 'MTSS1' , 'SNX2' , 'TRIM22' , 'ARHGAP9' , 'GAPT' , 'HLA-DRB5' , 'BTLA' , 'CAMK1D' , 'PIK3IP1' , 'PFDN5' , 'RPS27' , 'TGFBR2' , 'PTGER4' , 'HLA-DQB1' , 'FOXP1' , 'PARP14' , 'NOP53' , 'FTH1' , 'RNASE6' , 'HLA-B' , 'CD55' , 'RPL13' , 'TMSB10' , 'UTRN')
-
-markers$Plasmablast <- c('IGHG' , 'IGKsum' , 'IGHVDJsum' , 'IGLsum' , 'JCHAIN' , 'MZB1' , 'IGHA' , 'SSR4' , 'XBP1' , 'HSP90B1' , 'DERL3' , 'FKBP11' , 'SEC11C' , 'IGHM' , 'SDF2L1' , 'PPIB' , 'PRDM1' , 'PRDX4' , 'SSR3' , 'AC012236.1' , 'PDIA4' , 'MYDGF' , 'SELENOS' , 'IGHD' , 'HERPUD1' , 'FKBP2' , 'HSPA5' , 'KDELR2' , 'ITM2C' , 'HM13' , 'CCL3' , 'SUB1' , 'P4HB' , 'MANF' , 'SEC61B' , 'TNFRSF17' , 'SELENOM' , 'RABAC1' , 'LMAN1' , 'SELENOK' , 'ZBP1' , 'DNAAF1' , 'SPCS1' , 'ANKRD28' , 'TRAM1' , 'CRELD2' , 'SEC61G' , 'CYTOR' , 'DNAJB9' , 'PIM2' , 'ERLEC1' , 'LINC01480' , 'TMED2' , 'SPCS3' , 'SERP1' , 'RPN1' , 'HSPA1A' , 'CHPF' , 'PDIA6' , 'SPCS2' , 'LINC02362' , 'TXNDC5' , 'HIST1H1C' , 'DNAJC1' , 'FAM46C' , 'RPN2' , 'TXNDC11' , 'ARF4' , 'RASSF6' , 'DUSP4' , 'TMED9' , 'LMAN2' , 'RGS1' , 'SEC61A1' , 'OSTC' , 'KRTCAP2' , 'NUCB2' , 'RRBP1' , 'DENND6B' , 'NEAT1' , 'GMPPB' , 'CD27' , 'HDLBP' , 'HSPA6' , 'SLAMF7' , 'ADA2' , 'AC104699.1' , 'SRGN' , 'GLRX' , 'DNAJC3' , 'DDOST' , 'TMED10' , 'PLPP5' , 'CD38' , 'AREG' , 'ERN1' , 'KLF13' , 'IRF4' , 'ELL2' , 'TMEM258' , 'MEI1')
-
-markers$Pre_GC <- c('MIR155HG' , 'CCND2' , 'PSME2' , 'FCER2' , 'EBI3' , 'DDX21' , 'SYNGR2' , 'HSP90AB1' , 'NOP16' , 'CD83' , 'NCL' , 'EIF5A' , 'DNPH1' , 'GPX4' , 'MYC' , 'IFITM2' , 'CDKN1A' , 'NHP2' , 'NFKBID' , 'NME2' , 'NOLC1' , 'PARVB' , 'LILRA4' , 'RPL22L1' , 'ENO1' , 'HLA-DQA1' , 'TRAF4' , 'PA2G4' , 'SRM' , 'BHLHE40' , 'MAT2A' , 'FKBP4' , 'PRMT1' , 'SNHG8' , 'CALR' , 'SNHG15' , 'BATF' , 'MRTO4' , 'PRDX1' , 'IFRD2' , 'ACP5' , 'DUSP2' , 'ATIC' , 'EBNA1BP2' , 'IRF4' , 'PHB' , 'FABP5' , 'YBX1' , 'PAICS' , 'GM2A' , 'TXN' , 'FCMR' , 'EIF4A1' , 'PPA1' , 'TMEM147' , 'APRT' , 'PHACTR1' , 'NME1' , 'HSPA8' , 'DCTPP1' , 'TYMP' , 'LDHA' , 'TNFAIP3' , 'FBL' , 'MIF' , 'TMEM109' , 'FCRL5' , 'SEMA7A' , 'CHI3L2' , 'GNL3' , 'WARS' , 'C19orf70' , 'CDK4' , 'RRP7A' , 'NFKBIA' , 'APEX1' , 'ZFP36' , 'SLAMF1' , 'EEF1B2' , 'EIF5B' , 'HIVEP3' , 'IMPDH2' , 'LY6E' , 'NFKB1' , 'PDCD4' , 'SERBP1' , 'HSPD1' , 'PUM3' , 'CCDC85B' , 'HLA-A' , 'ZFP36L1' , 'SLC38A1' , 'AKR1A1')
-
-markers$Pre_PB <- c('RGS13' , 'RASSF6' , 'HOPX' , 'FRZB' , 'BIK' , 'VPREB3' , 'MEF2B' , 'ALDH2' , 'CAMK1' , 'PRPSAP2' , 'FAM3C' , 'PRDX1' , 'MARCKSL1' , 'HMCES' , 'DHRS9' , 'SERPINA9' , 'AC104699.1' , 'LRMP' , 'XBP1' , 'LINC01857' , 'ERH' , 'CCDC88A' , 'FEZ1' , 'BAIAP2L1' , 'HTR3A' , 'POU2AF1' , 'AC023590.1' , 'MDFIC' , 'BST2' , 'BTNL9' , 'NANS' , 'GPR137B' , 'LMO4' , 'SEMA4A' , 'HDAC9' , 'PRDM1' , 'CD9' , 'GCHFR' , 'DUSP2' , 'ABRACL' , 'FGFR1' , 'PRKCD' , 'HSPB1' , 'LCK' , 'CD53' , 'SUSD3' , 'REEP5' , 'RGS1' , 'PELI1' , 'A4GALT' , 'HERPUD1' , 'PARP1' , 'KLHL6' , 'CD38' , 'TRAF4' , 'RGS2' , 'PDIA6' , 'ZNF608' , 'HIST1H2AC' , 'PAG1' , 'RBKS' , 'ATP6V1G1' , 'ARHGAP10' , 'LHFPL2' , 'RELB' , 'ANP32B' , 'RNGTT' , 'EBF1' , 'HLA-DRB5' , 'HLA-DQA1' , 'HSP90B1' , 'AMZ2' , 'C7orf50' , 'RASL11A' , 'SMAP1' , 'HIST1H2BK' , 'DUSP4' , 'ARPC2' , 'RAB3GAP2' , 'ARPC5' , 'POU2F2' , 'PDIA4' , 'CD74' , 'CYBA' , 'GRN' , 'PDE4D' , 'DUSP22' , 'SIT1' , 'HLA-DMB' , 'CD82' , 'HLA-DRB1' , 'SEL1L3' , 'HLA-DMA' , 'CAMK2B' , 'PCED1B' , 'TOX' , 'SWAP70' , 'MSI2' , 'ZCCHC7' , 'PKM')
-
-markers
-```
-
-```{r}
-# Computing module scores for gene signatures
-pbmc.Bcell <- AddModuleScore_UCell(pbmc.Bcell, features = markers)
-signature.names <- paste0(names(markers), "_UCell")
-
-VlnPlot(pbmc.Bcell, features = signature.names, group.by = "seurat_clusters")
-```
-
-```{r}
-# add max score metadata to seurat object
-df <- pbmc.Bcell[[c('Activated_UCell','Cycling_UCell','DZ_GC_UCell','FCRL3high_GC_UCell','GC_UCell','LZ_GC_UCell','MBC_UCell','MBC_FCRL4_UCell','DZ_GC_UCell','FCRL3high_GC_UCell','GC_UCell','LZ_GC_UCell','MBC_UCell','MBC_FCRL4_UCell','Naive_UCell','Plasmablast_UCell','Pre_GC_UCell','Pre_PB_UCell')]]
-
-df[, "prediction.score.max"] <- apply(df[, 1:9], 1, max)
-
-df <- df[['prediction.score.max']]
-
-pbmc.Bcell@meta.data$prediction.score.max <- df
-
-print('DONE')
-```
-
-Plot distribution of Ucell confidence scores
-
-```{r}
-pbmc.Bcell@meta.data$prediction.score.max %>%
-  tibble::enframe() %>%
-  ggplot(aes(x=value)) + 
-  geom_histogram(color = "white", bins = 50) +
-  geom_vline(xintercept = 0.4, linetype = 2, color = "red") + 
-  theme_classic(base_size = 14) +
-  ggtitle("distribution of Bcell subtype signature prediction score")
-
-```
-```{r}
-# Number of cells after sub-setting based on CD19+ scores
-ncol(pbmc.Bcell)
-```
-
-```{r}
-pbmc.10k@meta.data %>% head()
-```
-
-```{r}
-## how many cells for each cell type? 14 cell types
-table(pbmc.10k@meta.data$CellType)
-```
-
-```{r}
-# 10k cells
-length(colnames(pbmc.10k))
-```
-
-```{r}
-p1<- DimPlot(pbmc.10k, group.by = "CellType", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("10k pbmc")
-p1
-```
-```{r}
-pbmc<- readRDS("/Users/hawacoulibaly/Documents/pbmc_3k_annotated.RDS")
-
-p2<- DimPlot(pbmc, group.by = "seurat_clusters", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("2k pbmc")
-
-CombinePlots(plots = list(p1, p2))
-```
-Now, we can identify anchors between the two dataset and use these anchors to transfer the celltype labels we learned from the 10K scRNA-seq data to the 5k pmbc cells.
-
-```{r}
-transfer.anchors <- FindTransferAnchors(reference = pbmc.10k, query = pbmc, features = VariableFeatures(object = pbmc.10k), 
-    reference.assay = "RNA", query.assay = "RNA", reduction = "pcaproject")
-
-```
-
-```{r}
-celltype.predictions <- TransferData(anchorset = transfer.anchors, refdata = pbmc.10k$CellType, 
-    dims = 1:30)
-```
-
-```{r}
-head(celltype.predictions)
-```
-
-
-```{r}
-DimPlot(pbmc, group.by = "predicted.id", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("2k pbmc")
 ```
 
