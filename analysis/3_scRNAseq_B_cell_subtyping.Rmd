@@ -17,8 +17,7 @@ library(RColorBrewer)
 library(UCell)
 ```
 
-
-read in the reference pbmc data obtained from 
+read in the reference pbmc data obtained from
 
 ```{r}
 pbmc.ref <- readRDS("/Users/hawacoulibaly/Downloads/SEURAT_OBJECTS/HumanTonsil_BCells_scRNA_SeuratObject.rds")
@@ -37,6 +36,7 @@ ncol(pbmc.ref)
 ```{r}
 pbmc.ref@meta.data %>% head()
 ```
+
 Next step discovers the most variable features (genes) in Bcell susets - these are usually most interesting for downstream analysis.
 
 ```{r}
@@ -55,11 +55,11 @@ plot1 <- VariableFeaturePlot(pbmc.ref)
 LabelPoints(plot = plot1, points = top10, repel = TRUE, xnudge = 0, ynudge = 0)
 ```
 
-
 ```{r}
 ## how many cells for each cell type? 12 B  cell sub-types
 table(pbmc.ref@meta.data$CellType)
 ```
+
 Notice that only B cell subtypes are present
 
 ```{r}
@@ -71,7 +71,6 @@ length(colnames(pbmc.ref))
 p1<- DimPlot(pbmc.ref, group.by = "CellType", label = TRUE, repel = TRUE) + NoLegend() + ggtitle("44k pbmc")
 ```
 
-
 ```{r}
 # read in our 3k human PBMC data
 pbmc<- readRDS("/Users/hawacoulibaly/Documents/pbmc_3k_annotated.RDS")
@@ -80,6 +79,7 @@ p2<- DimPlot(pbmc, group.by = "seurat_clusters", label = TRUE, repel = TRUE)+xli
 
 CombinePlots(plots = list(p1, p2))
 ```
+
 Now, we can identify anchors between the two dataset and use these anchors to transfer the celltype labels we learned from the 10K scRNA-seq data to the 3k pmbc cells.
 
 ```{r}
@@ -91,15 +91,14 @@ Note if transferring scRNAseq label to scATACseq data, set reduction = “cca”
 
 To transfer the cluster ids, we provide a vector of previously annotated cell type labels for the RNA to the refdata parameter. The output will contain a matrix with predictions and confidence scores for each 44k pbmc cell.
 
-
 ```{r}
 ElbowPlot(pbmc.ref)
 ```
 
-
 ```{r}
 celltype.predictions <- TransferData(anchorset = transfer.anchors, refdata = pbmc.ref$CellType, dims = 1:10)
 ```
+
 ```{r}
 head(celltype.predictions)
 ```
@@ -111,18 +110,23 @@ pbmc@meta.data %>% head()
 ```
 
 ```{r}
-DimPlot(pbmc, group.by = "predicted.id", label = TRUE, repel = TRUE)+xlim(-15, 20)+ylim(-15, 7) + NoLegend() + ggtitle("3k pbmc")
+DimPlot(pbmc, group.by = "predicted.id", label = TRUE, repel = TRUE)+xlim(-15, 20)+ylim(-15, 7) + ggtitle("3k pbmc")
 ```
-confidence of the label transfering
 
+confidence of the label transfering
 
 ```{r}
 pbmc@meta.data$prediction.score.max %>%
   tibble::enframe() %>%
   ggplot(aes(x=value)) + 
   geom_histogram(color = "white", bins = 50) +
-  geom_vline(xintercept = 0.9, linetype = 2, color = "red") + 
+  geom_vline(xintercept = 0.2, linetype = 2, color = "red") + 
   theme_classic(base_size = 14) +
   ggtitle("distribution of max prediciton score")
+```
+Most of the cells receive a positive prediction score (> 0.2).
+
+```{r}
+
 ```
 
